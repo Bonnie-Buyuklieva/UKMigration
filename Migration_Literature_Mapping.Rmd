@@ -1,0 +1,103 @@
+---
+title: "Migration Literature Mapping"
+author: "Boyana Buyuklieva"
+date: "July 31, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(psych)
+library(skimr)
+library(kableExtra)
+library(ggplot2)
+
+library(dplyr)
+library(igraph)
+library(glue)
+library(reshape2)
+library(ggplot2)
+library(heatmaply)
+
+library(Matrix)
+export_gml <- function(citnw,exportfile){
+  V(citnw)$reduced_title = sapply(V(citnw)$title,function(s){paste0(substr(s,1,50),"...")})
+  V(citnw)$reduced_title = ifelse(degree(citnw)>20,V(citnw)$reduced_title,rep("",vcount(citnw)))
+  # remove empty attributes
+  for(attr in c('depth','citingFilled','numHorizontalDepth',kws)){
+    citnw = remove.vertex.attribute(citnw,attr)
+  }
+  write_graph(citnw,file=exportfile,format = 'gml')
+}
+
+path <- 'C:/Users/billi/Dropbox/_PhD/__PhD Book/Writing Drafts/_Februrary_Draft/Lit_Review - scholar/'
+```
+
+# corpus_filteredNonExcl
+
+```{r}
+corpus_filteredNonExcl <- read.csv(paste0(path, "Final_Data/Raw/corpus_filteredNonExcl.csv"), sep=";")
+#skim(corpus_filteredNonExcl)# see image
+```
+
+
+![alt text here](C:\Users\billi\Dropbox\_PhD\__PhD Book\Writing Drafts\_Februrary_Draft\Lit_Review - scholar\Scripts\skimm_Excl.PNG)
+
+Duplicated titles:     
+```{r}
+#duplicate titles 
+kable(summary(corpus_filteredNonExcl$title[duplicated(corpus_filteredNonExcl$title)]))
+
+check_nonUniqueTitle <- corpus_filteredNonExcl[duplicated(corpus_filteredNonExcl$title),]
+```
+
+
+Year:     
+```{r}
+summary(corpus_filteredNonExcl$year)
+View(corpus_filteredNonExcl$year)
+
+#really shouldn't be anything other than between 1900-2020
+check_years <- subset(corpus_filteredNonExcl , 1899 < corpus_filteredNonExcl$year & 2020 < corpus_filteredNonExcl$year)
+
+```
+
+
+```{r, igraphs}
+edge_file = paste0(path, "Final_Data/Raw/corpus_filteredNonExcl_links.csv")
+node_file = paste0(path, "Final_Data/Raw/corpus_filteredNonExcl.csv")
+
+edges <- read.csv(edge_file,sep=";",header=F,colClasses = c('character','character'))
+nodes <- as.tbl(read.csv(node_file,sep=";",stringsAsFactors = F,quote = '"',colClasses = rep('character',9)))
+
+
+# numeric hdepth values (incl. NA)
+nodes = nodes[,-18] # remove filtered column
+for(j in 6:20){nodes[,j]=as.numeric(unlist(nodes[,j]))}
+kws = names(nodes)[6:20] #key words
+
+print(kws)
+
+#make ciation igraph
+citation <- graph_from_data_frame(edges,vertices = nodes)
+
+#connected components  
+#components(citation)$csize #455079, which is equal to edge_file -1
+#Numeric vector, the vertices of the original graph which will form the subgraph.
+#citation = induced_subgraph(citation,which(components(citation)$membership==1))#Doesn't change 'citation'
+
+
+#Make a subgraph with papers that are cited more than once
+citationcorehigher = induced_subgraph(citation,which(degree(citation)>1))
+
+while(length(which(degree(citationcorehigher)==1))>0){citationcorehigher = induced_subgraph(citationcorehigher,which(degree(citationcorehigher)>1))}
+
+# csv export
+export_gml(citationcorehigher,'corpus_filteredNonExcl.gml')
+save(citationcorehigher,file='corpus_filteredNonExcl_2+.RData')
+save(citation,file='corpus_filteredNonExcl_all.RData')
+```
+
+
+
+
