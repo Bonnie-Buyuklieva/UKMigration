@@ -1,0 +1,87 @@
+---
+title: "Manual_Sift_Corpus"
+author: "Boyana Buyuklieva"
+date: "August 1, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(readxl)
+library(stringr)
+library(ggplot2)
+```
+
+```{r, cache=TRUE }
+sifted <- read_excel("C:/Users/billi/Dropbox/_PhD/__PhD Book/Writing Drafts/_Februrary_Draft/Lit_Review - scholar/Final_Data/Excel/seedcorpus_sifted_cleaned.xlsx", 
+    col_types = c("numeric", "text", "text", 
+        "text", "numeric", "text", "text", 
+        "text", "blank", "text", "text", 
+        "text", "text", "text", "text", "text", 
+        "text", "text", "text", "text"))
+
+#do not add anything
+sifted$Note <- NULL
+sifted$horizontalDepth <- NULL
+sifted$citingFilled <- NULL
+sifted$priority <- NULL
+sifted$depth <- NULL
+sifted <- sifted[0:760,]#empty rows
+
+names(sifted)
+#queries start from 6
+```
+
+#	Which queries lost most?
+```{r}
+#	Which queries lost most?
+removed <- subset(sifted, grepl("N -", sifted$`Pass 2`), drop = TRUE)
+
+#replace rank with 1s
+removed[,6:16] <- apply(removed[,6:16], 2, function(x) ifelse(!is.na(x),1,0) )
+
+droped <- data.frame(count = sort(colSums(removed[,6:16]), decreasing = T))
+droped$query = rownames(droped )
+
+droped
+```
+
+#	Which papers hit most queries?
+
+```{r}
+sifted_bool <- sifted
+sifted_bool[,6:16] <- apply(sifted_bool[,6:16], 2, function(x) ifelse(!is.na(x),1,0) )
+
+hits <- data.frame(count = sort(rowSums(sifted_bool[,6:16]), decreasing = T))
+hits <- cbind (sifted_bool[,c('title')], hits)
+
+print('Most papers hit only one query:')
+summary(as.factor(hits$count))
+
+
+print('The ones that covered most are:')
+head(hits[,c('title','count')], 8)
+```
+
+
+#	Which were the top 3 per query?
+```{r}
+tp3 <- apply(sifted[,6:16], 2, function(x) which(x<3)) 
+tp3 <- unique(sifted[tp3,]) #some are top 3 for more than 1 category
+tp3[,6:16] <- apply(tp3[,6:16],2,function(x) ifelse(x<3,x+1, '-') )
+```
+
+
+#	Summary table of Query results
+```{r}
+QuerySum <- as.data.frame(colnames(tp3[,6:16]))
+colnames(QuerySum) <- 'keywords'
+QuerySum <- cbind(QuerySum, shortHand = seq(from = 1, to = lengths(q), by = 1))
+#total num of papers = 760, 100 per query. But there are overlaps. 
+
+library(tidyr)
+sb_long <- gather(sifted_bool, condition, measurement, control:cond2, factor_key=TRUE)
+
+```
+
