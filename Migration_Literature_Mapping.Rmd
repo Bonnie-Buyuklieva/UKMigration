@@ -18,6 +18,7 @@ library(glue)
 library(reshape2)
 library(ggplot2)
 library(heatmaply)
+library(readxl)
 
 library(Matrix)
 export_gml <- function(citnw,exportfile){
@@ -36,7 +37,7 @@ path <- 'C:/Users/billi/Dropbox/_PhD/__PhD Book/Writing Drafts/_Februrary_Draft/
 # corpus_filteredNonExcl
 
 ```{r}
-corpus_filteredNonExcl <- read.csv(paste0(path, """Final_Data/Raw/corpus_filteredNonExcl.csv"), sep=";")
+corpus_filteredNonExcl <- read.csv(paste0(path, "Final_Data/Raw/corpus_filteredNonExcl.csv"), sep=";")
 #skim(corpus_filteredNonExcl)# see image
 ```
 
@@ -66,77 +67,58 @@ Group Queries
 ```{r}
 qGroups <- read_excel(paste0(path,"Final_Data/Excel/queries_formatted.xlsx"), 
     col_types = c("text", "text", "numeric", 
-        "text", "numeric", "blank", "text"), 
+        "text", "numeric", "skip", "text"), 
     n_max = 11)
 
-print(unique(qGroups$Group))
-a <- head(corpus_filteredNonExcl)
+#superGroups
+corpusGrouped <- corpus_filteredNonExcl
+supergroups <- unique(qGroups$Group)
 
-a <- corpus_filteredNonExcl
+for (parent in supergroups) {
 
-
-for (i in length(unique(qGroups$Group)) ) {
-  
-  
-  
-}
-
-
-sub <- subset(qGroups, qGroups$Group == qGroups$Group[1])
+sub <- subset(qGroups, qGroups$Group == parent)
 Qrownames <-unique(sub$`Short hand`)
 
-#add a new column that indicates belonging query supergroup
-#NA means it doesn't belong
-#number means the most important it ever was for any subquery, adding 1 as count starts at 0
-a[qGroups$Group[1]] <- apply(a[, Qrownames],1, function(x) {min(x) + 1})
+print(parent)
+print( Qrownames)
 
+#this is the df that has the relevant subqueries
+#corpusGrouped [, Qrownames]
 
+rows <- as.data.frame(!apply(corpusGrouped [, Qrownames], 1, function(x) all(is.na(x))))
+oneHot <- apply(rows,1, function(x) { ifelse(x,which(x),0 )})
+corpusGrouped [parent] <- oneHot 
 
-
-
-Qrownames <- qGroups[,]$`Short hand`
-for (query in Qrownames) {
-  
 }
 
+#Context or Theory
+theme <- unique(qGroups$Theme)
+
+for (parent in theme) {
+
+sub <- subset(qGroups, qGroups$Theme == parent)
+Qrownames <-unique(sub$`Short hand`)
+
+print(parent)
+print( Qrownames)
+
+#this is the df that has the relevant subqueries
+#corpusGrouped [, Qrownames]
+
+rows <- as.data.frame(!apply(corpusGrouped [, Qrownames], 1, function(x) all(is.na(x))))
+oneHot <- apply(rows,1, function(x) { ifelse(x,which(x),0 )})
+corpusGrouped [parent] <- oneHot 
+
+}
+
+
+#Faves: ROSSI, Lee, Ravenstein, SJAASTAD
+paperCol <- c("families_move","theory_of_migration","laws_of_migration", "costs_and_returns_human_migration")
+corpusGrouped[is.na(corpusGrouped)] <- 0 
+
+View(corpusGrouped[,c("id","title","year",unique(qGroups$Group),unique(qGroups$Theme), paperCol) ])
+
+colSums(corpusGrouped[,c(unique(qGroups$Group), paperCol) ])
+save(corpusGrouped,file='corpusGrouped.RData')
+save(corpus_filteredNonExcl,file='corpus_filteredNonExcl.RData')
 ```
-
-
-
-```{r, igraphs}
-edge_file = paste0(path, "Final_Data/Raw/corpus_filteredNonExcl_links.csv")
-node_file = paste0(path, "Final_Data/Raw/corpus_filteredNonExcl.csv")
-
-edges <- read.csv(edge_file,sep=";",header=F,colClasses = c('character','character'))
-nodes <- as.tbl(read.csv(node_file,sep=";",stringsAsFactors = F,quote = '"',colClasses = rep('character',9)))
-
-
-# numeric hdepth values (incl. NA)
-nodes = nodes[,-18] # remove filtered column
-for(j in 6:20){nodes[,j]=as.numeric(unlist(nodes[,j]))}
-kws = names(nodes)[6:20] #key words
-print(kws)
-
-#make ciation igraph
-citation <- graph_from_data_frame(edges,vertices = nodes)
-
-#connected components  
-components(citation)$csize #455079, which is equal to edge_file -1
-#Numeric vector, the vertices of the original graph which will form the subgraph.
-citation = induced_subgraph(citation,which(components(citation)$membership==1))#Doesn't change 'citation'
-
-
-#Make a subgraph with papers that are cited more than once
-citationcorehigher = induced_subgraph(citation,which(degree(citation)>1))
-
-while(length(which(degree(citationcorehigher)==1))>0){citationcorehigher = induced_subgraph(citationcorehigher,which(degree(citationcorehigher)>1))}
-
-# csv export
-export_gml(citationcorehigher,'corpus_filteredNonExcl.gml')#Error in remove.vertex.attribute(citnw, attr) : No such vertex attribute: numHorizontalDepth
-save(citationcorehigher,file='corpus_filteredNonExcl_overTwo.RData')
-save(citation,file='corpus_filteredNonExcl_all.RData')
-```
-
-
-
-
