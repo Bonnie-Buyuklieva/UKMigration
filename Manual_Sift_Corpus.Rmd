@@ -11,10 +11,12 @@ knitr::opts_chunk$set(echo = TRUE)
 library(readxl)
 library(stringr)
 library(ggplot2)
+
+path <- 'C:/Users/billi/Dropbox/_PhD/__PhD Book/Writing Drafts/_Februrary_Draft/Chapter_2_scholar'
 ```
 
 ```{r, cache=TRUE }
-sifted <- read_excel("C:/Users/billi/Dropbox/_PhD/__PhD Book/Writing Drafts/_Februrary_Draft/Lit_Review - scholar/Final_Data/Excel/seedcorpus_sifted_cleaned.xlsx",
+sifted <- read_excel(paste0(path,"./Final_Data/Excel/seedcorpus_sifted_cleaned.xlsx"),
     na = "NA",
     col_types = c("numeric", "text", "text", 
         "text", "text", "text", 
@@ -64,39 +66,39 @@ head(hits[,c('title','count')], 8)
 ```
 
 
-#	How much to queries overlap?
+#	How much do queries overlap?
 ```{r}
-
-querySum <- as.data.frame(colnames(sifted_bool[,6:16]))
-colnames(QuerySum) <- 'keywords'
-querySum <- cbind(QuerySum, shortHand = seq(from = 1, to = lengths(q), by = 1))
-#total num of papers = 760, 100 per query. But there are overlaps. 
+#for every column, record co-ocuring query hits in a matrix
 
 qpairMatches <- data.frame()
-
-for (start in 6:15){
-  for (col in start:16){
-    if(col<16){
-      nextcol <- col+1
-      tmp <- sifted_bool[,col]+ sifted_bool[,nextcol]
-      print( paste(colnames(sifted_bool[,col]), '+', colnames(sifted_bool[, nextcol]) ))
-      print(sum(tmp == 2))
-
-      tmp <- cbind(colnames(sifted_bool[,col]), colnames(sifted_bool[, nextcol]), sum(tmp == 2))
-      qpairMatches <- rbind(qpairMatches,tmp)
-    }else{
-      break
-    }
+rep = 10#numebr of queries
+for(start in 6:15){
+  for (end in 1:rep) {
+      increment = start + end
+       #print( paste(start , ':', increment))
+       tmp <- sifted_bool[,start]+ sifted_bool[,increment]
+       tmp <- data.frame(colnames(sifted_bool[,start]), colnames(sifted_bool[,increment]), count = sum(tmp == 2))
+       qpairMatches <- rbind(qpairMatches,tmp)
   }
+  rep = rep - 1
 }
-
-
-
-
-
-
-
-
 
 ```
 
+#	What does this overlap look like?
+```{r}
+qpairMatches[order(-qpairMatches$count),]
+```
+
+
+```{r}
+suppressPackageStartupMessages(library(circlize))
+#https://jokergoo.github.io/circlize_book/book/the-chorddiagram-function.html#chord-diagram-colors
+#remeber to cite!
+#://medialab.github.io/iwanthue/
+#set grid.col
+
+chordDiagram(unique(qpairMatches[qpairMatches$count>0,]), 
+             transparency = .20 )
+circos.clear()
+```
