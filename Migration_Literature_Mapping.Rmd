@@ -67,8 +67,8 @@ Group Queries
 ```{r}
 qGroups <- read_excel(paste0(path,"Final_Data/Excel/queries_formatted.xlsx"), 
     col_types = c("text", "text", "numeric", 
-        "text", "numeric", "skip", "text"), 
-    n_max = 11)
+        "text", "numeric", "skip", "text", "text"), 
+    n_max = 16)
 
 #superGroups
 corpusGrouped <- corpus_filteredNonExcl
@@ -116,7 +116,11 @@ corpusGrouped [parent] <- oneHot
 paperCol <- c("families_move","theory_of_migration","laws_of_migration", "costs_and_returns_human_migration")
 corpusGrouped[is.na(corpusGrouped)] <- 0 
 
+
+
 View(corpusGrouped[,c("id","title","year",unique(qGroups$Group),unique(qGroups$Theme), paperCol) ])
+corpusGrouped <- corpusGrouped[,c("id","title","year",unique(qGroups$Group),unique(qGroups$Theme), paperCol) ]
+
 
 colSums(corpusGrouped[,c(unique(qGroups$Group), paperCol) ])
 save(corpusGrouped,file='corpusGrouped.RData')
